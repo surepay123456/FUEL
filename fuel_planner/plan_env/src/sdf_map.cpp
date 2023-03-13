@@ -498,10 +498,10 @@ double SDFMap::getDistWithGrad(const Eigen::Vector3d& pos, Eigen::Vector3d& grad
   if (!isInMap(pos)) {
     grad.setZero();
     return 0;
-  }
+  
 
   /* trilinear interpolation */
-  Eigen::Vector3d pos_m = pos - 0.5 * mp_->resolution_ * Eigen::Vector3d::Ones();
+  Eigen::Vector3d pos_m = pos - 0.6 * mp_->resolution_ * Eigen::Vector3d::Ones();
   Eigen::Vector3i idx;
   posToIndex(pos_m, idx);
   Eigen::Vector3d idx_pos, diff;
@@ -534,5 +534,6 @@ double SDFMap::getDistWithGrad(const Eigen::Vector3d& pos, Eigen::Vector3d& grad
 
   return dist;
 }
-}  // namespace fast_planner
+}  // namesace fast_planner
 // SDFMap
+}
