@@ -124,10 +124,10 @@ void MapROS::depthPoseCallback(const sensor_msgs::ImageConstPtr& img,
   camera_pos_(0) = pose->pose.position.x;
   camera_pos_(1) = pose->pose.position.y;
   camera_pos_(2) = pose->pose.position.z;
-  ROS_WARN("come to depthPoseCallback!")
+  ROS_WARN("come to depthPoseCallback!");
   if (!map_->isInMap(camera_pos_))  // exceed mapped region
     {
-      ROS_ERROR("exceed mapped region!")
+      ROS_ERROR("exceed mapped region!");
     return;}
 
   camera_q_ = Eigen::Quaterniond(pose->pose.orientation.w, pose->pose.orientation.x,
