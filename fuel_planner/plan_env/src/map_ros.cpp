@@ -250,10 +250,10 @@ void MapROS::publishMapAll() {
           known_volumn += 0.1 * 0.1 * 0.1;
       }
 
-  ofstream file("/home/boboyu/workspaces/plan_ws/src/fast_planner/exploration_manager/resource/"
-                "curve1.txt",
-                ios::app);
-  file << "time:" << time_now << ",vol:" << known_volumn << std::endl;
+  // ofstream file("/home/boboyu/workspaces/plan_ws/src/fast_planner/exploration_manager/resource/"
+  //               "curve1.txt",
+  //               ios::app);
+  // file << "time:" << time_now << ",vol:" << known_volumn << std::endl;
 }
 
 void MapROS::publishMapLocal() {
