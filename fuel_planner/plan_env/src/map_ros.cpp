@@ -36,7 +36,7 @@ void MapROS::init() {
   node_.param("map_ros/show_esdf_time", show_esdf_time_, false);
   node_.param("map_ros/show_all_map", show_all_map_, false);
   node_.param("map_ros/frame_id", frame_id_, string("world"));
-  node_.param("map_ros/use_depthodom",use_depthodom_,true)
+  node_.param("map_ros/use_depthodom",use_depthodom_,true);
 
 
   proj_points_.resize(640 * 480 / (skip_pixel_ * skip_pixel_));
@@ -74,12 +74,12 @@ void MapROS::init() {
       "/vins_fusion/extrinsic", 10, &MapROS::extrinsicCallback, this); //sub
   
   depth_sub_.reset(new message_filters::Subscriber<sensor_msgs::Image>(node_, "/map_ros/depth", 50));
-  cloud_sub_.reset(
-      new message_filters::Subscriber<sensor_msgs::PointCloud2>(node_, "/map_ros/cloud", 50));
-  pose_sub_.reset(
-      new message_filters::Subscriber<geometry_msgs::PoseStamped>(node_, "/map_ros/pose", 25));
+  // cloud_sub_.reset(
+  //     new message_filters::Subscriber<sensor_msgs::PointCloud2>(node_, "/map_ros/cloud", 50));
+  // pose_sub_.reset(
+  //     new message_filters::Subscriber<geometry_msgs::PoseStamped>(node_, "/map_ros/pose", 25));
   odom_sub_.reset(new message_filters::Subscriber<nav_msgs::Odometry>(node_, "/map_ros/odom", 100, ros::TransportHints().tcpNoDelay())
-  )
+ );
   //增加一个image odom的方式
   //修改话题名、修改类名、修改启动文件的param中的use_depthodom_
   if(use_depthodom_ == true)
@@ -91,16 +91,15 @@ void MapROS::init() {
     sync_image_odom_->registerCallback(boost::bind(&MapROS::depthOdomCallback, this, _1, _2));
 
   }
-
   //采用image or cloud pose的方式 
   else{
-    sync_image_pose_.reset(new message_filters::Synchronizer<MapROS::SyncPolicyImagePose>(
-      MapROS::SyncPolicyImagePose(100), *depth_sub_, *pose_sub_));
-    sync_image_pose_->registerCallback(boost::bind(&MapROS::depthPoseCallback, this, _1, _2));
-
-    sync_cloud_pose_.reset(new message_filters::Synchronizer<MapROS::SyncPolicyCloudPose>(
-      MapROS::SyncPolicyCloudPose(100), *cloud_sub_, *pose_sub_));
-    sync_cloud_pose_->registerCallback(boost::bind(&MapROS::cloudPoseCallback, this, _1, _2));
+    // sync_image_pose_.reset(new message_filters::Synchronizer<MapROS::SyncPolicyImagePose>(
+    //   MapROS::SyncPolicyImagePose(100), *depth_sub_, *pose_sub_));
+    // sync_image_pose_->registerCallback(boost::bind(&MapROS::depthPoseCallback, this, _1, _2));
+  
+    // sync_cloud_pose_.reset(new message_filters::Synchronizer<MapROS::SyncPolicyCloudPose>(
+    //   MapROS::SyncPolicyCloudPose(100), *cloud_sub_, *pose_sub_));
+    // sync_cloud_pose_->registerCallback(boost::bind(&MapROS::cloudPoseCallback, this, _1, _2));
   }
 
   map_start_time_ = ros::Time::now();
@@ -200,14 +199,14 @@ void MapROS::depthPoseCallback(const sensor_msgs::ImageConstPtr& img,
 
 void MapROS::depthOdomCallback(const sensor_msgs::ImageConstPtr& img,
                                const nav_msgs::OdometryConstPtr &odom) {
-  camera_pos_(0) = pose->pose.position.x;
-  camera_pos_(1) = pose->pose.position.y;
-  camera_pos_(2) = pose->pose.position.z;
-  ROS_WARN("come to depthPoseCallback!");
-  if (!map_->isInMap(camera_pos_))  // exceed mapped region
-    {
-      ROS_ERROR("exceed mapped region!");
-    return;}
+  // camera_pos_(0) = pose->pose.position.x;
+  // camera_pos_(1) = pose->pose.position.y;
+  // camera_pos_(2) = pose->pose.position.z;
+  // ROS_WARN("come to depthPoseCallback!");
+  // if (!map_->isInMap(camera_pos_))  // exceed mapped region
+  //   {
+  //     ROS_ERROR("exceed mapped region!");
+  //   return;}
 
   // camera_q_ = Eigen::Quaterniond(pose->pose.orientation.w, pose->pose.orientation.x,
   //                                pose->pose.orientation.y, pose->pose.orientation.z);
@@ -234,7 +233,7 @@ void MapROS::depthOdomCallback(const sensor_msgs::ImageConstPtr& img,
   camera_pos_(1) = cam_T(1, 3);
   camera_pos_(2) = cam_T(2, 3);
   camera_r_m_ = cam_T.block<3, 3>(0, 0);
-  ROS_WARN("come to depthOdomCallback!");
+  // ROS_WARN("come to depthOdomCallback!");
   if (!map_->isInMap(camera_pos_))  // exceed mapped region
     {
       ROS_ERROR("exceed mapped region!");

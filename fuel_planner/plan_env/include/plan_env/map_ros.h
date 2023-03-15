@@ -41,7 +41,7 @@ private:
   void cloudPoseCallback(const sensor_msgs::PointCloud2ConstPtr& msg,
                          const geometry_msgs::PoseStampedConstPtr& pose);
   void depthOdomCallback(const sensor_msgs::ImageConstPtr& img,
-                               const nav_msgs::OdometryConstPtr &odom)  
+                               const nav_msgs::OdometryConstPtr &odom);
                                                     
   void updateESDFCallback(const ros::TimerEvent& /*event*/);
   void visCallback(const ros::TimerEvent& /*event*/);
