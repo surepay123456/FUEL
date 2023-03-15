@@ -36,6 +36,8 @@ void MapROS::init() {
   node_.param("map_ros/show_esdf_time", show_esdf_time_, false);
   node_.param("map_ros/show_all_map", show_all_map_, false);
   node_.param("map_ros/frame_id", frame_id_, string("world"));
+  node_.param("map_ros/use_depthodom",use_depthodom_,true)
+
 
   proj_points_.resize(640 * 480 / (skip_pixel_ * skip_pixel_));
   point_cloud_.points.resize(640 * 480 / (skip_pixel_ * skip_pixel_));
@@ -68,19 +70,38 @@ void MapROS::init() {
   update_range_pub_ = node_.advertise<visualization_msgs::Marker>("/sdf_map/update_range", 10);
   depth_pub_ = node_.advertise<sensor_msgs::PointCloud2>("/sdf_map/depth_cloud", 10);
 
+  extrinsic_sub_ = node_.subscribe<nav_msgs::Odometry>(
+      "/vins_fusion/extrinsic", 10, &MapROS::extrinsicCallback, this); //sub
+  
   depth_sub_.reset(new message_filters::Subscriber<sensor_msgs::Image>(node_, "/map_ros/depth", 50));
   cloud_sub_.reset(
       new message_filters::Subscriber<sensor_msgs::PointCloud2>(node_, "/map_ros/cloud", 50));
   pose_sub_.reset(
       new message_filters::Subscriber<geometry_msgs::PoseStamped>(node_, "/map_ros/pose", 25));
+  odom_sub_.reset(new message_filters::Subscriber<nav_msgs::Odometry>(node_, "/map_ros/odom", 100, ros::TransportHints().tcpNoDelay())
+  )
+  //增加一个image odom的方式
+  //修改话题名、修改类名、修改启动文件的param中的use_depthodom_
+  if(use_depthodom_ == true)
+  {
+    //odom_sub_.reset(new message_filters::Subscriber<nav_msgs::Odometry>(node_, "/map_ros/odom", 100, ros::TransportHints().tcpNoDelay()));
 
-  sync_image_pose_.reset(new message_filters::Synchronizer<MapROS::SyncPolicyImagePose>(
+    sync_image_odom_.reset(new message_filters::Synchronizer<MapROS::SyncPolicyImageOdom>(
+        MapROS::SyncPolicyImageOdom(100), *depth_sub_, *odom_sub_));
+    sync_image_odom_->registerCallback(boost::bind(&MapROS::depthOdomCallback, this, _1, _2));
+
+  }
+
+  //采用image or cloud pose的方式 
+  else{
+    sync_image_pose_.reset(new message_filters::Synchronizer<MapROS::SyncPolicyImagePose>(
       MapROS::SyncPolicyImagePose(100), *depth_sub_, *pose_sub_));
-  sync_image_pose_->registerCallback(boost::bind(&MapROS::depthPoseCallback, this, _1, _2));
+    sync_image_pose_->registerCallback(boost::bind(&MapROS::depthPoseCallback, this, _1, _2));
 
-  sync_cloud_pose_.reset(new message_filters::Synchronizer<MapROS::SyncPolicyCloudPose>(
+    sync_cloud_pose_.reset(new message_filters::Synchronizer<MapROS::SyncPolicyCloudPose>(
       MapROS::SyncPolicyCloudPose(100), *cloud_sub_, *pose_sub_));
-  sync_cloud_pose_->registerCallback(boost::bind(&MapROS::cloudPoseCallback, this, _1, _2));
+    sync_cloud_pose_->registerCallback(boost::bind(&MapROS::cloudPoseCallback, this, _1, _2));
+  }
 
   map_start_time_ = ros::Time::now();
 }
@@ -119,6 +140,23 @@ void MapROS::updateESDFCallback(const ros::TimerEvent& /*event*/) {
              max_esdf_time_);
 }
 
+void MapROS::extrinsicCallback(const nav_msgs::OdometryConstPtr &odom)
+{
+  Eigen::Quaterniond cam2body_q = Eigen::Quaterniond(odom->pose.pose.orientation.w,
+                                                     odom->pose.pose.orientation.x,
+                                                     odom->pose.pose.orientation.y,
+                                                     odom->pose.pose.orientation.z);
+  Eigen::Matrix3d cam2body_r_m = cam2body_q.toRotationMatrix();
+  cam2body_.block<3, 3>(0, 0) = cam2body_r_m;  //需要增加md_.cam2body
+  cam2body_(0, 3) = odom->pose.pose.position.x;
+  cam2body_(1, 3) = odom->pose.pose.position.y;
+  cam2body_(2, 3) = odom->pose.pose.position.z;
+  cam2body_(3, 3) = 1.0;
+}
+
+
+
+
 void MapROS::depthPoseCallback(const sensor_msgs::ImageConstPtr& img,
                                const geometry_msgs::PoseStampedConstPtr& pose) {
   camera_pos_(0) = pose->pose.position.x;
@@ -132,6 +170,9 @@ void MapROS::depthPoseCallback(const sensor_msgs::ImageConstPtr& img,
 
   camera_q_ = Eigen::Quaterniond(pose->pose.orientation.w, pose->pose.orientation.x,
                                  pose->pose.orientation.y, pose->pose.orientation.z);
+  camera_r_m_ = camera_q_.toRotationMatrix(); 
+  // camera_q_就是 rotation_matrix的四元数表示 即camera_r_m_
+  
   cv_bridge::CvImagePtr cv_ptr = cv_bridge::toCvCopy(img, img->encoding);
   if (img->encoding == sensor_msgs::image_encodings::TYPE_32FC1)
     (cv_ptr->image).convertTo(cv_ptr->image, CV_16UC1, k_depth_scaling_factor_);
@@ -156,6 +197,76 @@ void MapROS::depthPoseCallback(const sensor_msgs::ImageConstPtr& img,
     ROS_WARN("Fusion t: cur: %lf, avg: %lf, max: %lf", (t2 - t1).toSec(), fuse_time_ / fuse_num_,
              max_fuse_time_);
 }
+
+void MapROS::depthOdomCallback(const sensor_msgs::ImageConstPtr& img,
+                               const nav_msgs::OdometryConstPtr &odom) {
+  camera_pos_(0) = pose->pose.position.x;
+  camera_pos_(1) = pose->pose.position.y;
+  camera_pos_(2) = pose->pose.position.z;
+  ROS_WARN("come to depthPoseCallback!");
+  if (!map_->isInMap(camera_pos_))  // exceed mapped region
+    {
+      ROS_ERROR("exceed mapped region!");
+    return;}
+
+  // camera_q_ = Eigen::Quaterniond(pose->pose.orientation.w, pose->pose.orientation.x,
+  //                                pose->pose.orientation.y, pose->pose.orientation.z);
+
+  // camera_q_就是 rotation_matrix的四元数表示
+  
+  
+  ////// 
+    /* get pose */
+  Eigen::Quaterniond body_q = Eigen::Quaterniond(odom->pose.pose.orientation.w,
+                                                 odom->pose.pose.orientation.x,
+                                                 odom->pose.pose.orientation.y,
+                                                 odom->pose.pose.orientation.z);
+  Eigen::Matrix3d body_r_m = body_q.toRotationMatrix();
+  Eigen::Matrix4d body2world;
+  body2world.block<3, 3>(0, 0) = body_r_m;
+  body2world(0, 3) = odom->pose.pose.position.x;
+  body2world(1, 3) = odom->pose.pose.position.y;
+  body2world(2, 3) = odom->pose.pose.position.z;
+  body2world(3, 3) = 1.0;
+
+  Eigen::Matrix4d cam_T = body2world * cam2body_;
+  camera_pos_(0) = cam_T(0, 3);
+  camera_pos_(1) = cam_T(1, 3);
+  camera_pos_(2) = cam_T(2, 3);
+  camera_r_m_ = cam_T.block<3, 3>(0, 0);
+  ROS_WARN("come to depthOdomCallback!");
+  if (!map_->isInMap(camera_pos_))  // exceed mapped region
+    {
+      ROS_ERROR("exceed mapped region!");
+    return;}
+  ///////
+
+  cv_bridge::CvImagePtr cv_ptr = cv_bridge::toCvCopy(img, img->encoding);
+  if (img->encoding == sensor_msgs::image_encodings::TYPE_32FC1)
+    (cv_ptr->image).convertTo(cv_ptr->image, CV_16UC1, k_depth_scaling_factor_);
+  cv_ptr->image.copyTo(*depth_image_);
+
+  auto t1 = ros::Time::now();
+
+  // generate point cloud, update map
+  proessDepthImage();
+  map_->inputPointCloud(point_cloud_, proj_points_cnt, camera_pos_);
+  if (local_updated_) {
+    map_->clearAndInflateLocalMap();
+    esdf_need_update_ = true;
+    local_updated_ = false;
+  }
+
+  auto t2 = ros::Time::now();
+  fuse_time_ += (t2 - t1).toSec();
+  max_fuse_time_ = max(max_fuse_time_, (t2 - t1).toSec());
+  fuse_num_ += 1;
+  if (show_occ_time_)
+    ROS_WARN("Fusion t: cur: %lf, avg: %lf, max: %lf", (t2 - t1).toSec(), fuse_time_ / fuse_num_,
+             max_fuse_time_);
+}
+
+
 
 void MapROS::cloudPoseCallback(const sensor_msgs::PointCloud2ConstPtr& msg,
                                const geometry_msgs::PoseStampedConstPtr& pose) {
@@ -184,7 +295,7 @@ void MapROS::proessDepthImage() {
   int cols = depth_image_->cols;
   int rows = depth_image_->rows;
   double depth;
-  Eigen::Matrix3d camera_r = camera_q_.toRotationMatrix();
+  //Eigen::Matrix3d camera_r_m_ = camera_q_.toRotationMatrix();  //改：camera_r ->camera_r_m_
   Eigen::Vector3d pt_cur, pt_world;
   const double inv_factor = 1.0 / k_depth_scaling_factor_;
 
@@ -207,7 +318,7 @@ void MapROS::proessDepthImage() {
       pt_cur(0) = (u - cx_) * depth / fx_;
       pt_cur(1) = (v - cy_) * depth / fy_;
       pt_cur(2) = depth;
-      pt_world = camera_r * pt_cur + camera_pos_;
+      pt_world = camera_r_m_ * pt_cur + camera_pos_;
       auto& pt = point_cloud_.points[proj_points_cnt++];
       pt.x = pt_world[0];
       pt.y = pt_world[1];

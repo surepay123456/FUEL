@@ -7,6 +7,9 @@
 #include <message_filters/time_synchronizer.h>
 #include <pcl_conversions/pcl_conversions.h>
 
+#include <Eigen/Eigen>
+#include <Eigen/StdVector>
+
 #include <ros/ros.h>
 
 #include <cv_bridge/cv_bridge.h>
@@ -30,14 +33,20 @@ public:
   void setMap(SDFMap* map);
   void init();
 
+EIGEN_MAKE_ALIGNED_OPERATOR_NEW
+
 private:
   void depthPoseCallback(const sensor_msgs::ImageConstPtr& img,
                          const geometry_msgs::PoseStampedConstPtr& pose);
   void cloudPoseCallback(const sensor_msgs::PointCloud2ConstPtr& msg,
                          const geometry_msgs::PoseStampedConstPtr& pose);
+  void depthOdomCallback(const sensor_msgs::ImageConstPtr& img,
+                               const nav_msgs::OdometryConstPtr &odom)  
+                                                    
   void updateESDFCallback(const ros::TimerEvent& /*event*/);
   void visCallback(const ros::TimerEvent& /*event*/);
-
+  void extrinsicCallback(const nav_msgs::OdometryConstPtr &odom);
+  
   void publishMapAll();
   void publishMapLocal();
   void publishESDF();
@@ -57,18 +66,30 @@ private:
       SyncPolicyCloudPose;
   typedef shared_ptr<message_filters::Synchronizer<SyncPolicyCloudPose>> SynchronizerCloudPose;
 
+  typedef message_filters::sync_policies::ApproximateTime<sensor_msgs::Image, nav_msgs::Odometry>
+      SyncPolicyImageOdom;
+  typedef shared_ptr<message_filters::Synchronizer<SyncPolicyImageOdom>> SynchronizerImageOdom;
+  
+  
   ros::NodeHandle node_;
   shared_ptr<message_filters::Subscriber<sensor_msgs::Image>> depth_sub_;
   shared_ptr<message_filters::Subscriber<sensor_msgs::PointCloud2>> cloud_sub_;
   shared_ptr<message_filters::Subscriber<geometry_msgs::PoseStamped>> pose_sub_;
+  shared_ptr<message_filters::Subscriber<nav_msgs::Odometry>> odom_sub_;
+
   SynchronizerImagePose sync_image_pose_;
   SynchronizerCloudPose sync_cloud_pose_;
+  SynchronizerImageOdom sync_image_odom_;
+
+  //add extrinsic_sub_
+  ros::Subscriber indep_cloud_sub_, indep_odom_sub_, extrinsic_sub_;
 
   ros::Publisher map_local_pub_, map_local_inflate_pub_, esdf_pub_, map_all_pub_, unknown_pub_,
       update_range_pub_, depth_pub_;
   ros::Timer esdf_timer_, vis_timer_;
 
   // params, depth projection
+  bool use_depthodom_;
   double cx_, cy_, fx_, fy_;
   double depth_filter_maxdist_, depth_filter_mindist_;
   int depth_filter_margin_;
@@ -87,6 +108,13 @@ private:
   // input
   Eigen::Vector3d camera_pos_;
   Eigen::Quaterniond camera_q_;
+
+    // camera position and pose data
+
+  //Eigen::Vector3d camera_pos_, last_camera_pos_;
+  Eigen::Matrix3d camera_r_m_, last_camera_r_m_;  //r_m_ : rotation matrix
+  Eigen::Matrix4d cam2body_;
+
   unique_ptr<cv::Mat> depth_image_;
   vector<Eigen::Vector3d> proj_points_;
   int proj_points_cnt;
