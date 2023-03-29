@@ -18,11 +18,11 @@
       <arg name="map_size_y_" value="$(arg map_size_y)"/>
       <arg name="map_size_z_" value="$(arg map_size_z)"/>
   
-      <arg name="box_min_x" value="-10.0"/>
-      <arg name="box_min_y" value="-15.0"/>
+      <arg name="box_min_x" value="-2.0"/>
+      <arg name="box_min_y" value="-2.0"/>
       <arg name="box_min_z" value=" 0.0"/>
-      <arg name="box_max_x" value="10.0"/>
-      <arg name="box_max_y" value="15.0"/>
+      <arg name="box_max_x" value="5.0"/>
+      <arg name="box_max_y" value="2.0"/>
       <arg name="box_max_z" value=" 2.0"/>
   
       <arg name="odometry_topic" value="$(arg odom_topic)"/>
@@ -47,7 +47,7 @@
   
     <!-- trajectory server -->
     <node pkg="plan_manage" name="traj_server" type="traj_server" output="screen">
-      <remap from="/position_cmd" to="planning/pos_cmd"/>
+      <!-- <remap from="/position_cmd" to="planning/pos_cmd"/> -->
   
       <remap from="/odom_world" to="$(arg odom_topic)"/>
       
