@@ -36,11 +36,11 @@
     <param name="sdf_map/map_size_x"   value="$(arg map_size_x_)" /> 
     <param name="sdf_map/map_size_y"   value="$(arg map_size_y_)" /> 
     <param name="sdf_map/map_size_z"   value="$(arg map_size_z_)" /> 
-    <!-- <param name="sdf_map/obstacles_inflation"     value="0.099" />  -->
-    <param name="sdf_map/obstacles_inflation"     value="0.199" /> 
+    <!-- <param name="sdf_map/obstacles_inflation"     value="0.199" />  -->
+    <param name="sdf_map/obstacles_inflation"     value="0.2" /> 
     <param name="sdf_map/local_bound_inflate"    value="0.5"/>
     <param name="sdf_map/local_map_margin" value="50"/>
-    <param name="sdf_map/ground_height"        value="-0.01"/>
+    <param name="sdf_map/ground_height"        value="-0.5"/>
     <param name="sdf_map/default_dist"        value="0.0"/>
     
     <param name="sdf_map/p_hit"  value="0.65"/>
@@ -156,7 +156,7 @@
     <param name="search/w_time" value="10.0" type="double"/>
     <param name="search/horizon" value="5.0" type="double"/>
     <param name="search/lambda_heu" value="10.0" type="double"/>
-    <param name="search/resolution_astar" value="0.025" type="double"/>
+    <param name="search/resolution_astar" value="0.01" type="double"/>
     <param name="search/time_resolution" value="0.8" type="double"/>
     <param name="search/margin" value="0.2" type="double"/>
     <param name="search/allocate_num" value="100000" type="int"/>
@@ -166,7 +166,7 @@
     <param name="astar/lambda_heu" value="10000.0" type="double"/>
     <param name="astar/resolution_astar" value="0.2" type="double"/>
     <param name="astar/allocate_num" value="1000000" type="int"/>
-    <param name="astar/max_search_time" value="0.001" type="double"/>
+    <param name="astar/max_search_time" value="0.003" type="double"/>
 
   <!-- trajectory optimization -->
     <param name="optimization/ld_smooth" value="20.0" type="double"/>
