@@ -278,6 +278,8 @@ void FastPlannerManager::planExploreTraj(const vector<Eigen::Vector3d>& tour,
     times(i) = (pos.row(i + 1) - pos.row(i)).norm() / (pp_.max_vel_ * 0.5);
 
   PolynomialTraj init_traj;
+  std::cout<<"waypoints"<<"pos"<<pos<<endl<<"cur_vel"<<cur_vel<<endl<< zero<<endl<<"cur_acc"<< cur_acc<<endl<<zero<<endl<<"times"<< times<<endl;
+
   PolynomialTraj::waypointsTraj(pos, cur_vel, zero, cur_acc, zero, times, init_traj);
 
   // B-spline-based optimization

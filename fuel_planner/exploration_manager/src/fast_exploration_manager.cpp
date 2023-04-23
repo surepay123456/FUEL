@@ -236,7 +236,15 @@ int FastExplorationManager::planExploreMotion(
     return FAIL;
   }
   ed_->path_next_goal_ = planner_manager_->path_finder_->getPath();
+  // if(ed_->path_next_goal_.size()  < 3 ){
+  //   return FAIL;
+  // }
   shortenPath(ed_->path_next_goal_);
+  // shortenPath(ed_->path_next_goal_);
+  if(ed_->path_next_goal_.size()  < 3 ){
+    return FAIL;
+  }
+  //   shortenPath(ed_->path_next_goal_);
 
   const double radius_far = 5.0;
   const double radius_close = 1.5;
@@ -259,10 +267,10 @@ int FastExplorationManager::planExploreMotion(
       truncated_path.push_back(cur_pt);
     }
     ed_->next_goal_ = truncated_path.back();
-    planner_manager_->planExploreTraj(truncated_path, vel, acc, time_lb);
-    // if (!planner_manager_->kinodynamicReplan(
-    //         pos, vel, acc, ed_->next_goal_, Vector3d(0, 0, 0), time_lb))
-    //   return FAIL;
+    // planner_manager_->planExploreTraj(truncated_path, vel, acc, time_lb);
+    if (!planner_manager_->kinodynamicReplan(
+            pos, vel, acc, ed_->next_goal_, Vector3d(0, 0, 0), time_lb))
+      return FAIL;
     // ed_->kino_path_ = planner_manager_->kino_path_finder_->getKinoTraj(0.02);
   } else {
     // Search kino path to exactly next viewpoint and optimize
