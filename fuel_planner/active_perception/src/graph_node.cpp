@@ -46,7 +46,7 @@ double ViewNode::searchPath(const Vector3d& p1, const Vector3d& p2, vector<Vecto
     return (p1 - p2).norm();
   }
   // Search a path using decreasing resolution
-  vector<double> res = { 0.4 };
+  vector<double> res = {     0.2 , 0.1 ,  0.05 };
   for (int k = 0; k < res.size(); ++k) {
     astar_->reset();
     astar_->setResolution(res[k]);

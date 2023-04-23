@@ -61,6 +61,9 @@ int Astar::search(const Eigen::Vector3d& start_pt, const Eigen::Vector3d& end_pt
 
   const auto t1 = ros::Time::now();
 
+  std:vector<Eigen::Vector3d> init_search_list;
+  std::vector<std::pair< string,Eigen::Vector3d> > init_search_flag;
+  init_search_list.push_back(start_pt);
   /* ---------- search loop ---------- */
   while (!open_set_.empty()) {
     cur_node = open_set_.top();
@@ -73,7 +76,7 @@ int Astar::search(const Eigen::Vector3d& start_pt, const Eigen::Vector3d& end_pt
 
     // Early termination if time up
     if ((ros::Time::now() - t1).toSec() > max_search_time_) {
-      // std::cout << "early";
+      std::cout << "early time up!"<<endl;
       early_terminate_cost_ = cur_node->g_score + getDiagHeu(cur_node->position, end_pt);
       return NO_PATH;
     }
@@ -93,11 +96,28 @@ int Astar::search(const Eigen::Vector3d& start_pt, const Eigen::Vector3d& end_pt
           step << dx, dy, dz;
           if (step.norm() < 1e-3) continue;
           nbr_pos = cur_pos + step;
+          //add 初始扩展位置
+          if(use_node_num_==1){
+            init_search_list.push_back(nbr_pos);
+          }
           // Check safety
-          if (!edt_env_->sdf_map_->isInBox(nbr_pos)) continue;
-          if (edt_env_->sdf_map_->getInflateOccupancy(nbr_pos) == 1 ||
-              edt_env_->sdf_map_->getOccupancy(nbr_pos) == SDFMap::UNKNOWN)
+          if (!edt_env_->sdf_map_->isInBox(nbr_pos)) {
+          if(use_node_num_==1)
+            init_search_flag.push_back(std::make_pair("not in box",nbr_pos));
             continue;
+          }
+          if (edt_env_->sdf_map_->getInflateOccupancy(nbr_pos) == 1){
+          if(use_node_num_==1)
+            init_search_flag.push_back(std::make_pair("occupancy ",nbr_pos));
+            continue;
+          }
+
+          if (
+              edt_env_->sdf_map_->getOccupancy(nbr_pos) == SDFMap::UNKNOWN){
+          if(use_node_num_==1)
+            init_search_flag.push_back(std::make_pair("unknown",nbr_pos));
+            continue;
+          }
 
           bool safe = true;
           Vector3d dir = nbr_pos - cur_pos;
@@ -133,7 +153,11 @@ int Astar::search(const Eigen::Vector3d& start_pt, const Eigen::Vector3d& end_pt
           } else if (tmp_g_score < node_iter->second->g_score) {
             neighbor = node_iter->second;
           } else
-            continue;
+            {
+          if(use_node_num_==1)
+              init_search_flag.push_back(std::make_pair("already in the close set",nbr_pos));
+              continue;
+            }
 
           neighbor->parent = cur_node;
           neighbor->g_score = tmp_g_score;
@@ -142,9 +166,18 @@ int Astar::search(const Eigen::Vector3d& start_pt, const Eigen::Vector3d& end_pt
           open_set_map_[nbr_idx] = neighbor;
         }
   }
-  // cout << "open set empty, no path!" << endl;
-  // cout << "use node num: " << use_node_num_ << endl;
-  // cout << "iter num: " << iter_num_ << endl;
+  cout << "open set empty, no path!" << endl;
+  cout << "use node num: " << use_node_num_ << endl;
+  cout << "iter num: " << iter_num_ << endl;
+  // init_search_flag;
+  // init_search_list;
+  cout << "resolution: " << resolution_ <<endl;
+  for(auto& p : init_search_list){
+    std::cout<<p.transpose()<<endl;
+  }
+  for(auto& p : init_search_flag){
+    std::cout<<p.first<<" "<<p.second.transpose()<<endl;
+  }
   return NO_PATH;
 }
 
