@@ -41,8 +41,14 @@
       <arg name="fy" value="383.1229248046875"/>
   
       <!-- maximum velocity and acceleration the drone will reach -->
+<<<<<<< HEAD
       <arg name="max_vel" value="0.5" />
       <arg name="max_acc" value="0.6" />
+=======
+      <!--实验部分用的 mav_vel=1.5m/s max_acc = 0.8m/s^2 最大角速度=0.9rad/s -->
+      <arg name="max_vel" value="1.0" />   
+      <arg name="max_acc" value="6.0" />
+>>>>>>> set vel add acc
     </include>
   
     <!-- trajectory server -->
