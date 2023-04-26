@@ -87,6 +87,9 @@ void FastExplorationFSM::FSMCallback(const ros::TimerEvent& e) {
         LocalTrajData* info = &planner_manager_->local_data_;
         double t_r = (ros::Time::now() - info->start_time_).toSec() + fp_->replan_time_;
 
+        //如果用odom_pos_的数据来代替start_pt_ 和start_vel_，start_yaw等，其他用估计的来做
+        //其他也可以用odom的callback来计算相应的高阶导，这样做的好处，保证当前规划的起始点在飞机当前位置
+        //这样做是因为飞机不能完全跟踪轨迹，当远离原有规划轨迹再进行重规划时，起始点会偏移
         fd_->start_pt_ = info->position_traj_.evaluateDeBoorT(t_r);
         fd_->start_vel_ = info->velocity_traj_.evaluateDeBoorT(t_r);
         fd_->start_acc_ = info->acceleration_traj_.evaluateDeBoorT(t_r);

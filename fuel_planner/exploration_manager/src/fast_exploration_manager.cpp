@@ -260,6 +260,7 @@ int FastExplorationManager::planExploreMotion(
     // dead end)
     std::cout << "Far goal." << std::endl;
     double len2 = 0.0;
+    //在5m的范围内进行裁剪
     vector<Eigen::Vector3d> truncated_path = { ed_->path_next_goal_.front() };
     for (int i = 1; i < ed_->path_next_goal_.size() && len2 < radius_far; ++i) {
       auto cur_pt = ed_->path_next_goal_[i];
@@ -268,12 +269,14 @@ int FastExplorationManager::planExploreMotion(
     }
     ed_->next_goal_ = truncated_path.back();
     // planner_manager_->planExploreTraj(truncated_path, vel, acc, time_lb);
+    //在truncated_path中取最远的点，随后采用动力学搜索的方式
     if (!planner_manager_->kinodynamicReplan(
             pos, vel, acc, ed_->next_goal_, Vector3d(0, 0, 0), time_lb))
       return FAIL;
     // ed_->kino_path_ = planner_manager_->kino_path_finder_->getKinoTraj(0.02);
   } else {
-    // Search kino path to exactly next viewpoint and optimize
+    // Search kino path to exactly next viewpoint and optimize 出现动力学kino_Astar找不到路径的情况  
+    // 解决方法：动力学搜索网格步长的原因
     std::cout << "Mid goal" << std::endl;
     ed_->next_goal_ = next_pos;
 
@@ -428,7 +431,7 @@ void FastExplorationManager::findGlobalTour(
 
   // Get the path of optimal tour from path matrix
   frontier_finder_->getPathForTour(cur_pos, indices, ed_->global_tour_);
-
+  //ed_->global_tour_ 即要经过的点
   double tsp_time = (ros::Time::now() - t1).toSec();
   ROS_WARN("Cost mat: %lf, TSP: %lf", mat_time, tsp_time);
 }

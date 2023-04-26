@@ -95,7 +95,8 @@ int KinodynamicAstar::search(Eigen::Vector3d start_pt, Eigen::Vector3d start_v, 
     open_set_.pop();
     cur_node->node_state = IN_CLOSE_SET;
     iter_num_ += 1;
-
+    //当前阶段无法拓展出去就会出现iter_num_ = 1的情况,再考虑一种情况，当时地面上也有占用栅格，如果说飞机在地面位置中处于栅格里面
+    //节点就无法拓展出去。测试方案，将飞机架起来看看。
     double res = 1 / 2.0, time_res = 1 / 1.0, time_res_init = 1 / 20.0;
     Eigen::Matrix<double, 6, 1> cur_state = cur_node->state;
     Eigen::Matrix<double, 6, 1> pro_state;
@@ -104,6 +105,8 @@ int KinodynamicAstar::search(Eigen::Vector3d start_pt, Eigen::Vector3d start_v, 
     double pro_t;
     vector<Eigen::Vector3d> inputs;
     vector<double> durations;
+    //出现init_search中，元节点没有拓展出去的现象问题可能在init_max_tau_中，第一次扩展。 第一次拓展与加速度的primitives没有关系
+    //随后的节点拓展采用定时间max_tau_，以及采用加速度的primitives
     if (init_search) {
       inputs.push_back(start_acc_);
       for (double tau = time_res_init * init_max_tau_; tau <= init_max_tau_ + 1e-3;
@@ -206,6 +209,7 @@ int KinodynamicAstar::search(Eigen::Vector3d start_pt, Eigen::Vector3d start_v, 
             break;
           }
         }
+
 
         // This node end up in a voxel different from others
         if (!prune) {
